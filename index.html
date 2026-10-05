@@ -40,6 +40,7 @@
   .nav ul{display:flex;gap:26px;list-style:none;margin:0;padding:0}
   .nav ul a{color:var(--muted);text-decoration:none;font-size:15px;font-weight:600}
   .nav ul a:hover{color:var(--ink)}
+  .nav ul a.active{color:var(--brand)}
   .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:999px;padding:13px 24px;font-weight:700;font-size:16px;text-decoration:none;border:2px solid transparent;transition:transform .12s,background .12s,border-color .12s;cursor:pointer}
   .btn:focus-visible,a:focus-visible,summary:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
   .btn-primary{background:var(--brand);color:#fff}
@@ -385,6 +386,41 @@
   }
   [r,m,s].forEach(function(el){ el.addEventListener("input", calc); });
   calc();
+
+  // In-page links: scroll so the section's content sits just below the sticky header,
+  // without relying on #hash navigation (which fails in some previews and embeds).
+  var header=document.querySelector("header.site");
+  var reduceMotion=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function goTo(id){
+    var sec=document.getElementById(id); if(!sec) return;
+    var target=sec.firstElementChild || sec;
+    var y=target.getBoundingClientRect().top + window.pageYOffset - header.offsetHeight - 24;
+    window.scrollTo({top:Math.max(0,y), behavior:reduceMotion?"auto":"smooth"});
+    try{ history.replaceState(null,"","#"+id); }catch(e){}
+  }
+  document.querySelectorAll('a[href^="#"]').forEach(function(a){
+    var id=a.getAttribute("href").slice(1);
+    if(!id) return;
+    a.addEventListener("click", function(e){
+      if(id==="top"){ e.preventDefault(); window.scrollTo({top:0, behavior:reduceMotion?"auto":"smooth"}); return; }
+      if(document.getElementById(id)){ e.preventDefault(); goTo(id); }
+    });
+  });
+  if(location.hash) setTimeout(function(){ goTo(location.hash.slice(1)); }, 0);
+
+  // Highlight the menu item for the section in view
+  var navLinks=[].slice.call(document.querySelectorAll(".nav ul a"));
+  function markActive(){
+    var line=header.offsetHeight + 120, current=null;
+    navLinks.forEach(function(a){
+      var sec=document.getElementById(a.getAttribute("href").slice(1));
+      if(sec && sec.getBoundingClientRect().top <= line) current=a;
+    });
+    if(window.innerHeight + window.pageYOffset >= document.documentElement.scrollHeight - 2) current=navLinks[navLinks.length-1];
+    navLinks.forEach(function(a){ a.classList.toggle("active", a===current); });
+  }
+  window.addEventListener("scroll", markActive, {passive:true});
+  markActive();
 
   var dlg=document.getElementById("demo-video"), frame=dlg.querySelector("iframe");
   if (typeof dlg.showModal === "function") {
