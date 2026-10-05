@@ -58,7 +58,22 @@
   .btn-light{background:#fff;color:var(--brand-dark)}
   .btn-light:hover{transform:translateY(-1px);background:#f2fbf9}
   .btn-sm{padding:9px 18px;font-size:14.5px}
-  @media(max-width:860px){.nav ul{display:none}}
+  /* mobile menu */
+  .menu-btn{display:none;order:3;width:44px;height:44px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);cursor:pointer;place-items:center;padding:0}
+  .menu-btn:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+  .menu-btn svg{width:22px;height:22px;stroke:currentColor;stroke-width:2;stroke-linecap:round;fill:none}
+  .menu-btn path{transition:transform .2s,opacity .2s;transform-origin:12px 12px}
+  .menu-open .menu-btn .l1{transform:translateY(5px) rotate(45deg)}
+  .menu-open .menu-btn .l2{opacity:0}
+  .menu-open .menu-btn .l3{transform:translateY(-5px) rotate(-45deg)}
+  @media(max-width:860px){
+    .menu-btn{display:grid}
+    .nav ul{display:none;position:absolute;top:100%;left:0;right:0;flex-direction:column;gap:4px;padding:10px 16px 16px;background:var(--bg);border-bottom:1px solid var(--line);box-shadow:0 12px 24px rgba(15,28,46,.08)}
+    .menu-open .nav ul{display:flex}
+    .nav ul a{padding:13px 16px;border-radius:12px;font-size:17px;color:var(--ink)}
+    .nav ul a.active{color:var(--brand-dark)}
+  }
+  @media(max-width:860px) and (prefers-reduced-motion:reduce){.menu-btn path{transition:none}}
 
   /* hero */
   .hero{padding:72px 0 88px}
@@ -188,8 +203,11 @@
       <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#0e6b63"/><rect x="7" y="10" width="18" height="3.4" rx="1.7" fill="#fff" opacity=".55"/><rect x="7" y="18.6" width="18" height="3.4" rx="1.7" fill="#fff"/></svg>
       Backline
     </a>
+    <button class="menu-btn" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="main-menu">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path class="l1" d="M4 7h16"/><path class="l2" d="M4 12h16"/><path class="l3" d="M4 17h16"/></svg>
+    </button>
     <nav aria-label="Main">
-      <ul>
+      <ul id="main-menu">
         <li><a href="#how">How it works</a></li>
         <li><a href="#benefits">Benefits</a></li>
         <li><a href="#growth">Your team</a></li>
@@ -419,6 +437,23 @@
     });
   });
   if(location.hash) setTimeout(function(){ goTo(location.hash.slice(1), false); }, 0);
+
+  // Mobile menu: toggle with the button; close on a link tap, Escape, a tap outside, or widening past 860px
+  var menuBtn=document.querySelector(".menu-btn");
+  function setMenu(open){
+    header.classList.toggle("menu-open", open);
+    menuBtn.setAttribute("aria-expanded", open ? "true" : "false");
+    menuBtn.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+  }
+  menuBtn.addEventListener("click", function(){ setMenu(!header.classList.contains("menu-open")); });
+  navLinks.forEach(function(a){ a.addEventListener("click", function(){ setMenu(false); }); });
+  document.addEventListener("keydown", function(e){
+    if(e.key==="Escape" && header.classList.contains("menu-open")){ setMenu(false); menuBtn.focus(); }
+  });
+  document.addEventListener("click", function(e){
+    if(header.classList.contains("menu-open") && !header.contains(e.target)) setMenu(false);
+  });
+  window.matchMedia("(min-width: 861px)").addEventListener("change", function(m){ if(m.matches) setMenu(false); });
 
   // While scrolling by hand, highlight the section in view. Paused during a menu jump,
   // so the clicked item stays lit instead of flickering through the sections it passes.
