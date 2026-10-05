@@ -37,10 +37,18 @@
   .nav{display:flex;align-items:center;justify-content:space-between;height:68px;gap:20px}
   .brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink);font-weight:800;font-size:21px;letter-spacing:-.02em}
   .brand svg{width:30px;height:30px;flex:none}
-  .nav ul{display:flex;gap:26px;list-style:none;margin:0;padding:0}
-  .nav ul a{color:var(--muted);text-decoration:none;font-size:15px;font-weight:600}
+  .nav ul{display:flex;gap:6px;list-style:none;margin:0;padding:0}
+  .nav ul a{display:block;color:var(--muted);text-decoration:none;font-size:15px;font-weight:600;padding:8px 14px;border-radius:999px;transition:background .15s,color .15s}
   .nav ul a:hover{color:var(--ink)}
-  .nav ul a.active{color:var(--brand)}
+  .nav ul a.active{color:var(--brand-dark);background:var(--brand-tint)}
+  /* Same highlight without JavaScript: the menu item for the #section in the address bar */
+  body:has(#how:target) .nav a[href="#how"],
+  body:has(#benefits:target) .nav a[href="#benefits"],
+  body:has(#growth:target) .nav a[href="#growth"],
+  body:has(#time:target) .nav a[href="#time"],
+  body:has(#faq:target) .nav a[href="#faq"]{color:var(--brand-dark);background:var(--brand-tint)}
+  /* Anchor jumps land exactly at the section's top edge, right under the sticky header */
+  section[id]{scroll-margin-top:68px}
   .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:999px;padding:13px 24px;font-weight:700;font-size:16px;text-decoration:none;border:2px solid transparent;transition:transform .12s,background .12s,border-color .12s;cursor:pointer}
   .btn:focus-visible,a:focus-visible,summary:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
   .btn-primary{background:var(--brand);color:#fff}
@@ -387,40 +395,46 @@
   [r,m,s].forEach(function(el){ el.addEventListener("input", calc); });
   calc();
 
-  // In-page links: scroll so the section's content sits just below the sticky header,
-  // without relying on #hash navigation (which fails in some previews and embeds).
-  var header=document.querySelector("header.site");
+  // Menu: highlight the clicked item straight away and scroll to that section's top edge
+  // (section[id] has scroll-margin-top, so it lands right under the sticky header).
   var reduceMotion=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  function goTo(id){
+  var navLinks=[].slice.call(document.querySelectorAll(".nav ul a"));
+  var header=document.querySelector("header.site"), locked=false, unlockTimer;
+  function setActive(link){ navLinks.forEach(function(a){ a.classList.toggle("active", a===link); }); }
+  function linkFor(id){ return navLinks.filter(function(a){ return a.getAttribute("href")==="#"+id; })[0] || null; }
+  function goTo(id, smooth){
     var sec=document.getElementById(id); if(!sec) return;
-    var target=sec.firstElementChild || sec;
-    var y=target.getBoundingClientRect().top + window.pageYOffset - header.offsetHeight - 24;
-    window.scrollTo({top:Math.max(0,y), behavior:reduceMotion?"auto":"smooth"});
+    setActive(linkFor(id));
+    locked=true; clearTimeout(unlockTimer);
+    unlockTimer=setTimeout(function(){ locked=false; }, smooth ? 1200 : 100);
+    sec.scrollIntoView({behavior: smooth ? "smooth" : "auto", block:"start"});
     try{ history.replaceState(null,"","#"+id); }catch(e){}
   }
   document.querySelectorAll('a[href^="#"]').forEach(function(a){
     var id=a.getAttribute("href").slice(1);
     if(!id) return;
     a.addEventListener("click", function(e){
-      if(id==="top"){ e.preventDefault(); window.scrollTo({top:0, behavior:reduceMotion?"auto":"smooth"}); return; }
-      if(document.getElementById(id)){ e.preventDefault(); goTo(id); }
+      if(id==="top"){ e.preventDefault(); setActive(null); window.scrollTo({top:0, behavior:reduceMotion?"auto":"smooth"}); return; }
+      if(document.getElementById(id)){ e.preventDefault(); goTo(id, !reduceMotion); }
     });
   });
-  if(location.hash) setTimeout(function(){ goTo(location.hash.slice(1)); }, 0);
+  if(location.hash) setTimeout(function(){ goTo(location.hash.slice(1), false); }, 0);
 
-  // Highlight the menu item for the section in view
-  var navLinks=[].slice.call(document.querySelectorAll(".nav ul a"));
+  // While scrolling by hand, highlight the section in view. Paused during a menu jump,
+  // so the clicked item stays lit instead of flickering through the sections it passes.
   function markActive(){
+    if(locked) return;
     var line=header.offsetHeight + 120, current=null;
     navLinks.forEach(function(a){
       var sec=document.getElementById(a.getAttribute("href").slice(1));
       if(sec && sec.getBoundingClientRect().top <= line) current=a;
     });
     if(window.innerHeight + window.pageYOffset >= document.documentElement.scrollHeight - 2) current=navLinks[navLinks.length-1];
-    navLinks.forEach(function(a){ a.classList.toggle("active", a===current); });
+    setActive(current);
   }
   window.addEventListener("scroll", markActive, {passive:true});
-  markActive();
+  window.addEventListener("scrollend", function(){ locked=false; });
+  if(!location.hash) markActive();
 
   var dlg=document.getElementById("demo-video"), frame=dlg.querySelector("iframe");
   if (typeof dlg.showModal === "function") {
